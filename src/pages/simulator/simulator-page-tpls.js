@@ -1,115 +1,209 @@
 import { html } from 'lit';
-// Importamos los archivos para que se registren los componentes (side-effects)
+import { classMap } from 'lit/directives/class-map.js'; // Útil para clases dinámicas
+// Importamos componentes (Side Effects)
 import './cells/credit-input.js'; 
 import './cells/kpi-card.js';
 
 export const SimulatorPageTpls = (SuperClass) => class extends SuperClass {
+  
   render() {
-    // 🛡️ CLÁUSULA DE GUARDIA (Safety First)
-    // Si la IA aún no responde (es null o undefined), mostramos un Spinner
-    if (!this.uiSchema) {
-      return html`
-        <div class="container" style="text-align: center; padding: 50px;">
-          <h2>⏳ Consultando al Oráculo Financiero...</h2>
-          <p>La IA está analizando tu perfil...</p>
-        </div>
-      `;
-    }
-
-    // Si llegamos aquí, es que this.uiSchema YA tiene datos
+    // 🛡️ CLÁUSULA DE GUARDIA ACTUALIZADA
+  // Verificamos uiSchema, structure Y TAMBIÉN a11y
+  if (!this.uiSchema || !this.uiSchema.structure ) {
     return html`
-      <div class="container">
-        <div style="margin-bottom: 20px; padding: 10px; background: #e0e0e0; border-radius: 8px;">
-          <small>👮‍♂️ Simular Contexto de Usuario (AI Trigger):</small><br>
-          <button @click="${() => this.switchUserProfile('NOVICE')}">Soy PyME Nueva</button>
-          <button @click="${() => this.switchUserProfile('EXPERT_CFO')}">Soy CFO Experto</button>
-        </div>
+      <div class="container loading-state">
+        <h2>⏳ Consultando al Arquitecto IA...</h2>
+        <p>Generando contrato de interfaz normalizado...</p>
+      </div>
+    `;
+  }
 
-        <h1>🏦 ${this.uiSchema.pageTitle}</h1> 
-        ${this.uiSchema.sections.map(section => html`
-            <div class="controls">
-              ${section.widgets.map(widget => this._renderDynamicWidget(widget))}
-            </div>
-        `)}
+    const { structure, theme } = this.uiSchema;
+    
+    // Clases dinámicas basadas en el tema del JSON
+    const containerClasses = {
+      'container': true,
+      [`density-${theme.layoutDensity}`]: true, // 'density-spacious' o 'density-dense'
+      'theme-loaded': true
+    };
 
-        <div class="summary-cards">
-           ${this._tplKpi('Cuota Mensual', this.summary.monthlyPayment, 'primary')}
-           ${this._tplKpi('Total Intereses', this.summary.totalInterest)}
-           ${this._tplKpi('Total a Pagar', this.summary.totalPayment)}
-        </div>
+    return html`
+      <div class="${classMap(containerClasses)}">
         
+        ${this._renderDemoControls()}
+
+        <header role="banner">
+           <h1 id="page-title">${structure.title}</h1>
+           
+           <span class="sr-only">
+             ${structure.a11y?.pageTitle || structure.title}
+           </span>
+        </header>
+
+        <main id="main-content" role="main">
+          ${structure.regions.map(region => html`
+            <section 
+              id="${region.id}" 
+              role="${region.role || 'region'}" 
+              class="region-wrapper"
+              aria-labelledby="page-title">
+              
+              ${region.components.map(compRef => this._renderComponentById(compRef.id))}
+              
+            </section>
+          `)}
+        </main>
+
         ${this._renderTable()}
       </div>
     `;
   }
 
   /**
-   * EL INTERPRETE (Component Registry)
-   * Decide qué pintar según el "type" del JSON
+   * 🧠 EL BUSCADOR (Lookup Engine)
+   * Transforma un ID ("loan-amount-input") en HTML usando el diccionario "components"
    */
-  _renderDynamicWidget(widgetDef) {
-    switch (widgetDef.type) {
+  _renderComponentById(componentId) {
+    // 1. Buscamos la definición real en el diccionario
+    const def = this.uiSchema.components[componentId];
+    
+    if (!def) {
+      console.warn(`⚠️ Componente [${componentId}] referenciado pero no definido.`);
+      return html``;
+    }
+
+    // 2. Switch por tipo de componente
+    switch (def.type) {
       case 'credit-input':
-        return html`
-          <credit-input 
-            .label="${widgetDef.props.label}" 
-            .fieldId="${widgetDef.props.fieldId}" 
-            .value="${this[widgetDef.props.fieldId]}" 
-            .min="${widgetDef.props.min}" 
-            .max="${widgetDef.props.max}"
-            @credit-input-change="${this._onInputChange}"
-          ></credit-input>
-        `;
+        return this._tplCreditInput(def);
       
-      case 'risk-alert': 
-        // Aquí podrías agregar más tipos de componentes en el futuro
-        return html`<div class="alert">⚠️ ${widgetDef.props.message}</div>`;
+      case 'kpi-card':
+        return this._tplKpiCard(def);
+
+      case 'risk-alert':
+        return this._tplRiskAlert(def);
+        
+      case 'feedback-action':
+        return this._tplFeedbackAction(def);
 
       default:
-        console.warn('Componente desconocido:', widgetDef.type);
+        console.warn(`Tipo desconocido: ${def.type}`);
         return html``;
     }
   }
 
-  _renderTable() {
-     // ... tu código de tabla anterior ...
-     return html`
-        <h3>Tabla de Amortización</h3>
-        <div class="table-container">
-          <table>
-             <tbody>${this.amortizationTable.map(row => this._tplRow(row))}</tbody>
-          </table>
-        </div>
-     `;
-  }
+  /* ===========================================================
+     🎨 TEMPLATES ESPECÍFICOS (Binding de Props + A11y)
+     =========================================================== */
 
-  _tplInput(label, fieldId, value, min, max) {
+  _tplCreditInput(def) {
+    // Detectamos si es el campo principal para bindear el valor del modelo
+    // En un caso real, esto sería un mapa dinámico de valores.
+    const currentValue = def.id === 'loan-amount-input' ? this.amount : 0;
+
     return html`
-      <credit-input 
-        .label="${label}" 
-        .fieldId="${fieldId}" 
-        .value="${value}" 
-        .min="${min}" 
-        .max="${max}"
-        @credit-input-change="${this._onInputChange}"
-      ></credit-input>
+      <div class="field-wrapper" style="margin-bottom: 20px;">
+        <credit-input 
+          .label="${def.props.label}" 
+          .fieldId="${def.id}" 
+          .value="${currentValue}" 
+          .min="${def.props.min}" 
+          .max="${def.props.max}"
+          .helperText="${def.props.helperText}"
+          
+          /* ♿️ ACCESIBILIDAD IMPLÍCITA (Del Schema) */
+          aria-label="${def.a11y.ariaLabel}"
+          aria-required="${def.a11y.ariaRequired}"
+          
+          @credit-input-change="${(e) => this._onInputChange(e, def.id)}"
+        ></credit-input>
+
+        ${this.errors && this.errors[def.id] ? html`
+          <div class="error-message" role="alert" style="color: #b92a2a; font-size: 0.875rem; margin-top: 4px;">
+            🚫 ${this.errors[def.id]}
+          </div>
+        ` : ''}
+      </div>
     `;
   }
 
-  _tplKpi(title, value, variant = 'secondary') {
+  _tplKpiCard(def) {
+    // Si es la preview, inyectamos el valor calculado en tiempo real
+    const displayValue = def.id === 'simulation-preview' 
+      ? this.summary.monthlyPayment 
+      : def.props.value;
+
     return html`
       <kpi-card 
-        .title="${title}" 
-        .value="${value}"
-        .variant="${variant}"
+        .title="${def.props.title}" 
+        .value="${displayValue}"
+        .caption="${def.props.caption}"
+        .variant="${def.props.trend === 'positive' ? 'primary' : 'neutral'}"
+        title="${def.props.tooltip}" 
+        
+        /* ♿️ A11y */
+        role="${def.a11y.role}"
+        aria-label="${def.a11y.ariaLabel}"
       ></kpi-card>
+    `;
+  }
+
+  _tplRiskAlert(def) {
+    return html`
+      <div class="alert-box ${def.props.variant}" role="${def.a11y.role}" aria-live="${def.a11y.liveRegion}" 
+           style="background: #e8f4fd; padding: 16px; border-left: 4px solid #004481; margin-bottom: 24px; border-radius: 4px;">
+        <strong>${def.props.title}</strong>
+        <p style="margin: 4px 0 0 0;">${def.props.message}</p>
+      </div>
+    `;
+  }
+
+  _tplFeedbackAction(def) {
+    return html`
+      <div style="margin-top: 24px;">
+        <button 
+          class="bbva-btn-primary"
+          aria-label="${def.a11y.ariaLabel}"
+          style="width: ${def.props.fullWidth ? '100%' : 'auto'}; padding: 12px; background: #1973B8; color: white; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer;"
+          @click="${() => alert('Navegando al paso 2 (Simulado)')}">
+          ${def.props.label}
+        </button>
+      </div>
+    `;
+  }
+
+  // --- Mantenemos tus controles de Demo y Tabla igual ---
+  _renderDemoControls() {
+    return html`
+        <div class="simulation-controls" style="background: #f4f4f4; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd;">
+          <div style="margin-bottom: 10px;">
+            <strong>👤 Perfil:</strong>
+            <button @click="${() => this.switchUserProfile('NOVICE')}">Novato</button>
+            <button @click="${() => this.switchUserProfile('EXPERT_CFO')}">Experto</button>
+          </div>
+        </div>
+    `;
+  }
+
+  _renderTable() {
+    if (!this.amortizationTable || this.amortizationTable.length === 0) return html``;
+    return html`
+       <div class="table-container" style="margin-top: 40px;">
+         <h3>Tabla de Amortización (Proyección)</h3>
+         <table style="width: 100%; border-collapse: collapse;">
+            <thead style="background: #072146; color: white;">
+              <tr><th>Mes</th><th>Cuota</th><th>Interés</th><th>Capital</th><th>Pendiente</th></tr>
+            </thead>
+            <tbody>${this.amortizationTable.map(row => this._tplRow(row))}</tbody>
+         </table>
+       </div>
     `;
   }
 
   _tplRow(row) {
     return html`
-      <tr>
-        <td>${row.period}</td>
+      <tr style="border-bottom: 1px solid #eee;">
+        <td style="padding: 8px;">${row.period}</td>
         <td>${row.paymentFormatted}</td>
         <td>${row.interestFormatted}</td>
         <td>${row.capitalFormatted}</td>

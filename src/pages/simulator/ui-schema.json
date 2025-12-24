@@ -1,42 +1,152 @@
 {
-  "pageTitle": "Simulador Corporativo (Dinámico)",
-  "layout": "standard",
-  "sections": [
-    {
-      "id": "inputs_section",
-      "title": "Configuración del Crédito",
-      "widgets": [
-        {
-          "type": "credit-input",
-          "props": {
-            "label": "Monto Solicitado ($)",
-            "fieldId": "amount",
-            "min": 5000,
-            "max": 1000000,
-            "defaultValue": 20000
+  "meta": {
+    "version": "1.2.0",
+    "generator": "BBVA-Cells-Architect-Bot",
+    "timestamp": "2025-12-23T12:05:00Z",
+    "context": {
+      "userProfile": "NOVICE",
+      "intent": "LOAN",
+      "region": "ES",
+      "currency": "EUR"
+    }
+  },
+  "theme": {
+    "layoutDensity": "spacious",
+    "spacingToken": "spacing-l",
+    "typographyScale": "body-large"
+  },
+  "structure": {
+    "viewId": "loan-origination-step-1",
+    "title": "Solicitud de Préstamo Personal BBVA",
+    "a11y": {
+      "pageTitle": "Formulario de solicitud de préstamo personal. Paso 1 de 3.",
+      "skipLinkTarget": "main-content"
+    },
+    "regions": [
+      {
+        "id": "header-region",
+        "role": "banner",
+        "components": [
+          {
+            "id": "educational-alert",
+            "type": "risk-alert"
           }
-        },
-        {
-          "type": "credit-input",
-          "props": {
-            "label": "Tasa de Interés (%)",
-            "fieldId": "rate",
-            "min": 1,
-            "max": 50,
-            "defaultValue": 15
+        ]
+      },
+      {
+        "id": "main-content",
+        "role": "main",
+        "components": [
+          {
+            "id": "loan-amount-input",
+            "type": "credit-input"
+          },
+          {
+            "id": "simulation-preview",
+            "type": "kpi-card"
+          },
+          {
+            "id": "submit-action",
+            "type": "feedback-action"
           }
-        },
-        {
-          "type": "credit-input",
-          "props": {
-            "label": "Plazo (Meses)",
-            "fieldId": "months",
-            "min": 6,
-            "max": 72,
-            "defaultValue": 12
+        ]
+      }
+    ]
+  },
+  "components": {
+    "educational-alert": {
+      "type": "risk-alert",
+      "props": {
+        "variant": "informative",
+        "icon": "info-circle",
+        "title": "¿Cómo funcionan nuestros préstamos?",
+        "message": "Selecciona el importe y el plazo. Nosotros calcularemos tu cuota mensual estimada sin compromiso.",
+        "closable": false
+      },
+      "tokens": {
+        "backgroundColor": "foundations-info-light",
+        "textColor": "foundations-info-dark"
+      },
+      "a11y": {
+        "role": "status",
+        "liveRegion": "polite",
+        "description": "Información preliminar sobre el proceso de simulación."
+      }
+    },
+    "loan-amount-input": {
+      "type": "credit-input",
+      "props": {
+        "label": "¿Cuánto dinero necesitas?",
+        "placeholder": "Ej: 15.000",
+        "helperText": "Puedes solicitar entre 3.000 € y 75.000 €.",
+        "inputType": "currency",
+        "min": 3000,
+        "max": 75000,
+        "required": true
+      },
+      "validation": {
+        "rules": [
+          {
+            "type": "range",
+            "min": 3000,
+            "max": 75000,
+            "errorMessage": "El importe debe estar entre 3.000 y 75.000 euros."
+          },
+          {
+            "type": "format",
+            "pattern": "^[0-9]+$",
+            "errorMessage": "Por favor, introduce solo números enteros."
+          }
+        ],
+        "validateOn": "blur"
+      },
+      "a11y": {
+        "ariaLabel": "Campo de entrada para importe del préstamo en euros",
+        "ariaRequired": true,
+        "errorLiveRegion": "assertive",
+        "hintId": "amount-helper-text"
+      }
+    },
+    "simulation-preview": {
+      "type": "kpi-card",
+      "props": {
+        "title": "Cuota mensual estimada",
+        "value": "--,-- €",
+        "trend": "neutral",
+        "caption": "T.I.N. 5,50% | T.A.E. 6,15%",
+        "tooltip": "Esta cifra es una estimación basada en un plazo estándar de 48 meses."
+      },
+      "style": {
+        "marginTop": "spacing-xl"
+      },
+      "a11y": {
+        "role": "group",
+        "ariaLabel": "Tarjeta de resumen de simulación",
+        "description": "Muestra la cuota calculada en tiempo real basada en el importe introducido."
+      }
+    },
+    "submit-action": {
+      "type": "feedback-action",
+      "props": {
+        "label": "Continuar con la solicitud",
+        "variant": "primary",
+        "fullWidth": true,
+        "state": "enabled"
+      },
+      "behavior": {
+        "onPress": {
+          "action": "NAVIGATE",
+          "target": "step-2-personal-data",
+          "payload": {
+            "sourceComponent": "loan-amount-input"
           }
         }
-      ]
+      },
+      "a11y": {
+        "role": "button",
+        "ariaLabel": "Botón para continuar al paso 2",
+        "focusIndicator": "visible-ring"
+      }
     }
-  ]
+  }
 }
